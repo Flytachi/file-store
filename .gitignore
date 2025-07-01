@@ -1,0 +1,12 @@
+## IDE support
+*.buildpath
+*.project
+/.settings
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+
+/vendor
+composer.lock

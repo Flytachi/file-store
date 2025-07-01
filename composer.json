@@ -1,0 +1,25 @@
+{
+    "name": "flytachi/file-store",
+    "description": "File Store library",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "keywords": ["file store", "extra store", "store"],
+    "autoload": {
+        "psr-4": {
+            "Flytachi\\FileStore\\Src\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "flytachi",
+            "email": "jasur.rakhmatov03@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.3"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "@stable"
+    }
+}
