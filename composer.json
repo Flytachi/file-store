@@ -7,7 +7,7 @@
     "keywords": ["file store", "extra store", "store"],
     "autoload": {
         "psr-4": {
-            "Flytachi\\FileStore\\Src\\": "src/"
+            "Flytachi\\FileStore\\": "src/"
         }
     },
     "authors": [
