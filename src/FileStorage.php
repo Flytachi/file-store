@@ -8,13 +8,16 @@ class FileStorage
 {
     private string $directory;
     private string $dirKey;
-    private string $hmacType = 'sha256';
+    private bool $isHash;
+    private string $hmacType;
 
     /**
      * @throws FileStorageException
      */
-    public function __construct(string $rootPath, string $folderName)
+    public function __construct(string $rootPath, string $folderName, bool $isHash = true, string $hmacType = 'sha256')
     {
+        $this->isHash = $isHash;
+        $this->hmacType = $hmacType;
         $rootPath = rtrim($rootPath, '/');
         $folderName = ltrim($folderName, '/');
 
@@ -106,7 +109,11 @@ class FileStorage
 
     private function getFilePath(string $key): string
     {
-        $fileName = hash_hmac($this->hmacType, $key, $this->dirKey);
+        if ($this->isHash && !empty($this->hmacType)) {
+            $fileName = hash_hmac($this->hmacType, $key, $this->dirKey);
+        } else {
+            $fileName = $key;
+        }
         return $this->directory . '/' . $fileName;
     }
 
