@@ -96,6 +96,11 @@ class FileStorage
         return $parsed === null ? null : unserialize($parsed);
     }
 
+    public function keys(): array
+    {
+        return glob($this->directory . '/*') ?: [];
+    }
+
     public function clear(): void
     {
         foreach (glob($this->directory . '/*') as $file) {
