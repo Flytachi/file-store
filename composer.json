@@ -3,7 +3,7 @@
     "description": "File Store library",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "keywords": ["file store", "extra store", "store"],
     "autoload": {
         "psr-4": {

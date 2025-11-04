@@ -98,7 +98,11 @@ class FileStorage
 
     public function keys(): array
     {
-        return glob($this->directory . '/*') ?: [];
+        $keys = [];
+        foreach (glob($this->directory . '/*') as $file) {
+            $keys[] = basename($file);
+        }
+        return $keys;
     }
 
     public function clear(): void
