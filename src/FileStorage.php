@@ -37,8 +37,10 @@ class FileStorage
             throw new FileStorageException("Directory not writable: {$this->directory}");
         }
 
-        $this->dirKey = md5($this->directory);
+        $this->dirKey = $this->md5Normalized($this->directory);
     }
+
+
 
     public function write(string $key, mixed $content, ?int $expireAtTimestamp = null): void
     {
@@ -163,5 +165,21 @@ class FileStorage
         }
 
         return $data;
+    }
+
+    private function md5Normalized(string $str): string
+    {
+        $bom = "\xEF\xBB\xBF";
+        if (substr($str, 0, 3) === $bom) {
+            $str = substr($str, 3);
+        }
+
+        $str = preg_replace('/\r\n?/', "\n", $str);
+        $str = trim($str);
+        if (!mb_check_encoding($str, 'UTF-8')) {
+            $str = mb_convert_encoding($str, 'UTF-8');
+        }
+
+        return md5($str);
     }
 }

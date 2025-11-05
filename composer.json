@@ -3,7 +3,7 @@
     "description": "File Store library",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "keywords": ["file store", "extra store", "store"],
     "autoload": {
         "psr-4": {
@@ -17,7 +17,8 @@
         }
     ],
     "require": {
-        "php": ">=8.3"
+        "php": ">=8.3",
+        "ext-mbstring": "*"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "@stable"
