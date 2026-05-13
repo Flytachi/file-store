@@ -10,14 +10,24 @@ class FileStorage
     private string $dirKey;
     private bool $isHash;
     private string $hmacType;
+    private int $dirMode;
+    private int $fileMode;
 
     /**
      * @throws FileStorageException
      */
-    public function __construct(string $rootPath, string $folderName, bool $isHash = true, string $hmacType = 'sha256')
-    {
+    public function __construct(
+        string $rootPath,
+        string $folderName,
+        bool $isHash = true,
+        string $hmacType = 'sha256',
+        int $dirMode = 0770,
+        int $fileMode = 0660
+    ) {
         $this->isHash = $isHash;
         $this->hmacType = $hmacType;
+        $this->dirMode = $dirMode;
+        $this->fileMode = $fileMode;
         $rootPath = rtrim($rootPath, '/');
         $folderName = ltrim($folderName, '/');
 
@@ -28,9 +38,10 @@ class FileStorage
         $this->directory = $rootPath . '/' . $folderName;
 
         if (!is_dir($this->directory)) {
-            if (!mkdir($this->directory, 0770, true)) {
+            if (!mkdir($this->directory, $this->dirMode, true)) {
                 throw new FileStorageException("Directory not created: {$this->directory}");
             }
+            @chmod($this->directory, $this->dirMode);
         }
 
         if (!is_writable($this->directory)) {
@@ -55,9 +66,21 @@ class FileStorage
             $data = "#^e:{$expireAtTimestamp}\n" . $data;
         }
 
+        $tmpPath = null;
         try {
-            file_put_contents($filePath, $data, LOCK_EX);
+            $tmpPath = $filePath . '.tmp.' . bin2hex(random_bytes(6));
+            $written = file_put_contents($tmpPath, $data, LOCK_EX);
+            if ($written === false) {
+                throw new FileStorageException("Failed to write tmp file: $tmpPath");
+            }
+            @chmod($tmpPath, $this->fileMode);
+            if (!rename($tmpPath, $filePath)) {
+                throw new FileStorageException("Failed to rename tmp into place: $filePath");
+            }
         } catch (\Throwable $e) {
+            if ($tmpPath !== null) {
+                @unlink($tmpPath);
+            }
             throw new FileStorageException($e->getMessage(), previous: $e);
         }
     }
@@ -102,7 +125,11 @@ class FileStorage
     {
         $keys = [];
         foreach (glob($this->directory . '/*') as $file) {
-            $keys[] = basename($file);
+            $name = basename($file);
+            if (str_contains($name, '.tmp.')) {
+                continue;
+            }
+            $keys[] = $name;
         }
         return $keys;
     }
@@ -114,6 +141,43 @@ class FileStorage
         }
     }
 
+    public function gc(int $tmpMaxAgeSeconds = 3600): int
+    {
+        $deleted = 0;
+        $now = time();
+
+        foreach (new \DirectoryIterator($this->directory) as $entry) {
+            if ($entry->isDot() || !$entry->isFile()) {
+                continue;
+            }
+
+            $path = $entry->getPathname();
+            $name = $entry->getFilename();
+
+            if (str_contains($name, '.tmp.')) {
+                if ($now - $entry->getMTime() > $tmpMaxAgeSeconds) {
+                    if (@unlink($path)) {
+                        $deleted++;
+                    }
+                }
+                continue;
+            }
+
+            $fp = @fopen($path, 'r');
+            if (!$fp) {
+                continue;
+            }
+            $firstLine = fgets($fp);
+            fclose($fp);
+
+            if ($this->isExpiredLine($firstLine === false ? null : $firstLine, $path)) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
+    }
+
     // -------------------------
     // Internals
     // -------------------------
@@ -123,6 +187,14 @@ class FileStorage
         if ($this->isHash && !empty($this->hmacType)) {
             $fileName = hash_hmac($this->hmacType, $key, $this->dirKey);
         } else {
+            if (
+                $key === '' || $key === '.' || $key === '..'
+                || str_contains($key, '/')
+                || str_contains($key, '\\')
+                || str_contains($key, "\0")
+            ) {
+                throw new FileStorageException("Invalid key: $key");
+            }
             $fileName = $key;
         }
         return $this->directory . '/' . $fileName;

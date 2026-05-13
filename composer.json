@@ -3,11 +3,19 @@
     "description": "File Store library",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.5",
     "keywords": ["file store", "extra store", "store"],
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-detail": "vendor/bin/phpunit --testdox"
+    },
     "autoload": {
         "psr-4": {
             "Flytachi\\FileStore\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Flytachi\\FileStore\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -21,6 +29,7 @@
         "ext-mbstring": "*"
     },
     "require-dev": {
+        "phpunit/phpunit": "@stable",
         "squizlabs/php_codesniffer": "@stable"
     }
 }
