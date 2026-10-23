@@ -12,7 +12,11 @@ When `isHash=true` (the default), every key is run through:
 hash_hmac($hmacType, $key, $this->dirKey);
 ```
 
-…where `$dirKey` is an `md5` of the normalised storage directory path.
+…where `$dirKey` is an `md5` of the normalised **real** path of the storage
+directory (`realpath()`): two processes reaching the same directory by different
+paths — a symlink, a relative segment — derive the same file names and see each
+other's entries. For a plain absolute path the real path is the path itself, so
+those names are the same as in versions that hashed the path as written.
 
 This achieves two things:
 

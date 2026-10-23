@@ -38,7 +38,11 @@ class FileStorage
         $this->directory = $rootPath . '/' . $folderName;
 
         if (!is_dir($this->directory)) {
-            if (!mkdir($this->directory, $this->dirMode, true)) {
+            // Another process may create it between the check and mkdir() — two workers
+            // opening the same store for the first time. Its mkdir() then fails although
+            // the directory is there, so only a directory that still does not exist is
+            // an error.
+            if (!@mkdir($this->directory, $this->dirMode, true) && !is_dir($this->directory)) {
                 throw new FileStorageException("Directory not created: {$this->directory}");
             }
             @chmod($this->directory, $this->dirMode);
@@ -48,7 +52,12 @@ class FileStorage
             throw new FileStorageException("Directory not writable: {$this->directory}");
         }
 
-        $this->dirKey = $this->md5Normalized($this->directory);
+        // Keyed by the directory itself, not by how the path was written: through a
+        // symlink, a relative segment or a trailing slash the same directory would get
+        // another key, and every process reaching it another way would see none of the
+        // files the others wrote. A plain absolute path is its own real path, so its
+        // key — and every file name derived from it — is unchanged.
+        $this->dirKey = $this->md5Normalized(realpath($this->directory) ?: $this->directory);
     }
 
 

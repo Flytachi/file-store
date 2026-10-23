@@ -418,4 +418,85 @@ class FileStorageTest extends TestCase
         $this->assertSame('A', $a->read('same-key'));
         $this->assertSame('B', $b->read('same-key'));
     }
+
+
+    // ─── Directory key ───────────────────────────────────────────────────
+
+    public function testFileNamesOfAPlainPathAreUnchanged(): void
+    {
+        // Files written before the key followed the real path must still be found.
+        $root = realpath($this->root);
+        $store = new FileStorage($root, $this->folder);
+        $store->write('k', 'v');
+
+        $legacyName = hash_hmac('sha256', 'k', md5($root . '/' . $this->folder));
+        $this->assertFileExists($root . '/' . $this->folder . '/' . $legacyName);
+        $this->assertSame('v', $store->read('k'));
+    }
+
+    public function testTheSameDirectoryReachedThroughASymlinkSharesItsFiles(): void
+    {
+        $real = realpath($this->root);
+        $link = $this->root . '-link';
+        symlink($real, $link);
+        try {
+            (new FileStorage($real, $this->folder))->write('k', 'written via the real path');
+
+            $this->assertSame('written via the real path', (new FileStorage($link, $this->folder))->read('k'));
+        } finally {
+            @unlink($link);
+        }
+    }
+
+    public function testTheSameDirectoryWrittenDifferentlySharesItsFiles(): void
+    {
+        $root = realpath($this->root);
+        (new FileStorage($root, $this->folder))->write('k', 'v');
+        mkdir($root . '/other');
+
+        $this->assertSame('v', (new FileStorage($root . '/other/..', $this->folder))->read('k'), 'a relative segment');
+        $this->assertSame('v', (new FileStorage($root, $this->folder . '/'))->read('k'), 'a trailing slash');
+    }
+
+    // ─── Directory creation race ─────────────────────────────────────────
+
+    public function testProcessesCreatingTheSameDirectoryAtOnceAllSucceed(): void
+    {
+        if (!function_exists('pcntl_fork')) {
+            $this->markTestSkipped('pcntl is required to race real processes.');
+        }
+
+        for ($round = 0; $round < 20; $round++) {
+            $folder = "race-{$round}/nested";
+            $start = microtime(true) + 0.05;
+            $children = [];
+            for ($i = 0; $i < 8; $i++) {
+                $pid = pcntl_fork();
+                if ($pid === 0) {
+                    // All children leave the barrier together, so their is_dir() and
+                    // mkdir() calls overlap.
+                    while (microtime(true) < $start) {
+                        usleep(100);
+                    }
+                    $code = 0;
+                    try {
+                        new FileStorage($this->root, $folder);
+                    } catch (\Throwable) {
+                        $code = 1;
+                    }
+                    posix_kill(getmypid(), $code === 0 ? SIGKILL : SIGTERM);
+                }
+                $children[] = $pid;
+            }
+            foreach ($children as $pid) {
+                pcntl_waitpid($pid, $status);
+                $this->assertSame(
+                    SIGKILL,
+                    pcntl_wtermsig($status),
+                    "round {$round}: a process failed to open the store"
+                );
+            }
+            $this->assertDirectoryExists($this->root . '/' . $folder);
+        }
+    }
 }

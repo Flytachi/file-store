@@ -26,7 +26,7 @@ this library's failures without catching unrelated `\Exception`s.
 | Condition | Message |
 |-----------|---------|
 | `$rootPath` is not writable | `Path not writable: <rootPath>` |
-| `mkdir()` of the storage directory returned `false` | `Directory not created: <directory>` |
+| `mkdir()` of the storage directory failed and the directory still does not exist | `Directory not created: <directory>` |
 | Storage directory exists but is not writable | `Directory not writable: <directory>` |
 
 ### From `write()`

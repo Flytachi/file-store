@@ -30,8 +30,11 @@ public function __construct(
 
 1. Verifies `is_writable($rootPath)` — throws if not.
 2. Creates `$rootPath/$folderName` with `$dirMode` if missing, then explicit `chmod`.
+   Another process creating it at the same moment is not an error.
 3. Verifies `is_writable` on the storage directory — throws if not.
-4. Derives `$dirKey` (HMAC secret) by normalising and `md5()`-ing the full directory path.
+4. Derives `$dirKey` (HMAC secret) by normalising and `md5()`-ing the real path of the
+   directory — the same directory gets the same key however its path was written
+   (through a symlink, with `..`, with a trailing slash).
 
 **Throws** `FileStorageException` on any of the above failures.
 
